@@ -1,0 +1,23 @@
+# 修改目标后使用 npm run research -- task.yaml 启动
+title: Agent 上下文压缩策略
+goal: 调研主流 Agent 的上下文压缩方法，结合原始文档和开源实现解释机制、代价与适用场景。
+config:
+  model: gpt-6-luna
+  # default 使用模型默认值，可在页面模型选项中查看支持的等级
+  reasoningEffort: medium
+  # 主模板 derivation/tutorial/selection/industry/development/source_analysis/literature/implementation/debug_audit/tracking
+  reportType: derivation
+  # overview 概览、standard 标准、deep 深入推导
+  depth: deep
+  # brief 短篇、standard 中篇、detailed 详篇、long 长篇、comprehensive 系统长文
+  lengthPreset: detailed
+  # 可多选 mechanism/comparison/implementation/evidence/cost/risk/performance/evolution
+  focusAreas: [mechanism, comparison, evidence]
+  readerRole: engineer
+  familiarity: beginner
+  audience: 具备编程基础，但刚开始了解 Agent
+  sourcePreference: mixed
+  reuseStrategy: auto
+  budgetMinutes: 60
+  permission: limited
+  format: markdown

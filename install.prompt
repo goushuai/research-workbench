@@ -1,0 +1,103 @@
+# 本地研究工作台独立手工安装提示词
+
+你是一名协助本机部署的软件工程师。请读取本仓库，按本文独立完成安装，保留可核验的结果，并用中文报告部署目录、启动方法和验证范围。本方式逐项完成部署布置、依赖安装、工具获取与配置创建。自动安装入口作为另一种独立安装方式提供。
+
+## 目标
+
+在 Windows 或 macOS 本机部署研究工作台。源码目录是当前仓库，部署目录默认采用源码目录同级的 `<仓库目录名>-deploy`。数据库、账号凭据、下载、缓存、临时文件、研究会话、材料、日志和产出物放在部署目录。部署后的应用具有自身的依赖和构建结果。
+
+仓库内 `config/defaults.json` 是基础配置种子。首次启动时导入默认研究设置和自定义模板，内置任务模板在源码中。安装者通过自己的 ChatGPT 账号完成网页登录授权。
+
+## 技术栈与依赖说明
+
+- Node.js 24 或更新版本，使用内置 `node:sqlite`，SQLite 数据库由服务启动时创建。
+- TypeScript、tsx 运行服务代码，Vite 构建前端。
+- React 19、react-dom、lucide-react 构建中文界面。
+- Express 5 提供本机 API，node-pty 承载 Copilot 交互终端和后台研究。
+- YAML、jsonc-parser 处理配置，Zod 为项目依赖的一部分。
+- marked 处理 Markdown，DOMPurify 清理渲染 HTML。
+- playwright-core 调用 Chromium 排版为 PDF，pdfjs-dist 提供页面内 PDF 阅读。
+- Copilot CLI 1.0.106 执行原生 `/research`。
+- CLIProxyAPI 8.0.57 承接 ChatGPT/Codex OAuth 与本机模型转接。
+
+应用依赖精确版本以 package-lock.json 为准，使用 npm ci --include=dev --include=optional 安装完整依赖。该选项也适用于设置 NODE_ENV=production 的部署环境。服务通过 tsx 运行 TypeScript，需要保留相应运行包。node-pty 若触发本地编译，macOS 需要 Xcode Command Line Tools，Windows 需要适用的 Python 与 Visual Studio C++ Build Tools。
+
+## 平台探测
+
+确认操作系统、CPU 架构、Node.js 与 npm 版本。Windows 使用 PowerShell 本地路径规则，macOS 使用 POSIX shell 路径规则，所有含空格的路径需要正确引用。
+
+核对当前网络代理。Windows 可以通过系统 WebProxy 查询 GitHub 对应代理，按需设置 HTTPS_PROXY 与 HTTP_PROXY，并在启动 Node.js 下载程序前设置 NODE_USE_ENV_PROXY=1。已有代理环境变量优先沿用。应用回环地址加入 NO_PROXY。
+
+缺少 Node.js 24 时，可以从 Node.js 官方下载相应的便携版本 24.13.0，解压到部署目录的 tools/node。使用同一官方版本目录中的 SHASUMS256.txt 校验下载文件。运行 npm 和后续服务时，将该 Node.js 的 bin 目录或可执行文件目录放在 PATH 首位。
+
+Node.js 的 Windows 包采用 node-v24.13.0-win-x64.zip 或 node-v24.13.0-win-arm64.zip。macOS 包采用 node-v24.13.0-darwin-x64.tar.gz 或 node-v24.13.0-darwin-arm64.tar.gz。可使用安装者已有的更新 Node.js 版本。[Node.js 官方发行目录](https://nodejs.org/dist/v24.13.0/)
+
+## 文件布置
+
+1. 选择外部部署目录，检查已有 deployment.json 和 state，以判断是首次安装还是更新。更新前停止研究、等待候选任务结束，再停止网页服务。
+2. 建立 app、state/workbench、state/cliproxyapi/auth、tools、cache/npm、tmp 目录。
+3. 将 src、scripts、config、package.json、package-lock.json、tsconfig.json、vite.config.ts、index.html、task.yaml、README.md 复制到 app。使用明确的文件白名单完成布置。
+4. 在 app 执行 npm ci --include=dev --include=optional、npm run check、npm run build。npm 的缓存使用部署目录的 cache/npm，临时目录环境变量 TMP、TEMP、TMPDIR 指向部署目录的 tmp。
+5. 创建部署目录的 deployment.json，字段为 version（1）、source（源码绝对路径）、node（实际 Node.js 可执行文件绝对路径）、platform（win32 或 darwin）、arch（x64 或 arm64）。该文件属于本机部署信息。
+
+如果发现旧版源码目录的 .local-state 或 .local-tools，先检查运行情况，备份数据库、会话、凭据和工具。数据库通过 SQLite checkpoint 后复制。迁移数据库 JSON 字段及会话文件中的旧路径到 state 和 tools；Windows 保存的小写会话目录需要保持小写。验证记录数量、数据库完整性、原报告、凭据字节和会话目录一致后，再把旧目录收纳到部署目录的 backups。手工处理此流程即可完成旧数据迁移。
+
+## 安装研究执行工具
+
+在 tools/copilot 建立独立 npm 安装目录，使用 npm install @github/copilot@1.0.106 --include=optional 安装。确认对应平台组件已经安装到 node_modules/@github/copilot-<platform>-<arch>。Windows 的可执行文件为 copilot.exe，macOS 为 copilot。
+
+从 CLIProxyAPI 官方 v8.0.57 发行页下载下表的文件，核对 SHA256，然后解压到 tools/cliproxyapi/8.0.57。Windows 主程序为 cli-proxy-api.exe，macOS 主程序为 cli-proxy-api。macOS 主程序需要可执行权限。[CLIProxyAPI 官方发行页](https://github.com/router-for-me/CLIProxyAPI/releases/tag/v8.0.57)
+
+| 平台 | 文件名 | SHA256 |
+| --- | --- | --- |
+| Windows x64 | CLIProxyAPI_8.0.57_windows_amd64.zip | 45687b19ee71aad70236daefc31d33a8b9390b8ad1831c2c84acadc981a2964c |
+| Windows ARM64 | CLIProxyAPI_8.0.57_windows_aarch64.zip | c059bcb52b19ddf393c1fb9135dea1f94472a43d47cd55e7e06f6cd0db9265c8 |
+| macOS Intel | CLIProxyAPI_8.0.57_darwin_amd64.tar.gz | 428ad123451238972d208ba76d360df461517647e78bcb2ef8ab7cce5b3eebe1 |
+| macOS Apple Silicon | CLIProxyAPI_8.0.57_darwin_aarch64.tar.gz | dd620c0d24e000ffe908d0d8eeb4a6c7315a31d3776fa09f198856b09fd7821f |
+
+## 配置本机订阅转接
+
+在 state/cliproxyapi/config.yaml 创建 CLIProxyAPI 配置。使用兼容的平面字段 host、port、auth-dir、api-keys、proxy-url、logging-to-file、usage-statistics-enabled。
+
+- host 设为 127.0.0.1，port 设为 8317。
+- auth-dir 设为本次部署的 state/cliproxyapi/auth 绝对路径，使用 YAML 安全字符串编码。
+- 使用 Node.js crypto.randomBytes(32).toString("hex") 生成该安装独立的本机 API Key，放入 api-keys 数组。
+- proxy-url 采用安装者明确提供的网络代理或已有 HTTP 代理环境，按网络条件配置。
+- logging-to-file 与 usage-statistics-enabled 可以设为 true。
+- macOS 的 auth 目录权限设为 700，配置文件设为 600。
+
+已有配置、凭据和数据库的升级场景保留安装者的数据，并按实际迁移结果调整路径。公开种子文件只在空数据库首次初始化时导入。
+
+## PDF 浏览器
+
+检查本机 Edge 或 Chrome。Windows 通常可以复用系统 Edge，macOS 可以复用 /Applications 下的 Edge 或 Chrome。自定义位置使用 PDF_BROWSER_PATH。
+
+缺少浏览器时，在 app 使用已安装的 Playwright CLI 下载 Chromium，命令为 node node_modules/playwright-core/cli.js install chromium。执行时把 PLAYWRIGHT_BROWSERS_PATH 设为部署目录的 tools/browsers。运行时的同名变量也使用该路径。
+
+## 环境与启动
+
+工作台数据路径由 scripts/layout.mjs 定义。部署时使用以下值。
+
+- WORKBENCH_DEPLOY_DIR 指向部署根目录。
+- RESEARCH_DATA_DIR 指向部署目录的 state/workbench。
+- CLIPROXY_DATA_DIR 指向部署目录的 state/cliproxyapi。
+- PORT 默认 8765。
+- TMP、TEMP、TMPDIR 指向部署目录的 tmp。
+- npm_config_cache 指向部署目录的 cache/npm。
+- PLAYWRIGHT_BROWSERS_PATH 指向部署目录的 tools/browsers。
+- NO_PROXY 包含 localhost、127.0.0.1、::1。
+
+应用可以从 deployment.json 所在目录识别部署布局。使用实际 Node.js 执行 app/scripts/start.mjs 启动，app/scripts/stop.mjs 停止网页服务。这两个文件是应用的日常生命周期入口。
+
+创建部署目录的 Start-Workbench.cmd 与 Stop-Workbench.cmd，分别用带引号的 Node.js 绝对路径执行上述入口。Windows UTF-8 启动文件先设置 chcp 65001。macOS 建立同名 .command 启动文件，使用 shell 安全引用并设置可执行权限。这样首次安装时采用的便携 Node.js 也能在后续启动中使用。
+
+## 登录和验收
+
+1. 打开 http://127.0.0.1:8765，确认基础配置和模板已经导入。新安装的课题、研究任务、产出物列表应为空。
+2. 在执行设置中打开 ChatGPT 登录页面，由安装者本人完成授权。检查页面连接状态和模型目录。
+3. 确认后台服务从部署目录的 app 运行，数据库、日志和新文件进入部署目录的 state。
+4. 验证 Markdown 阅读、程序转换 PDF 与 PDF 页面。可以使用安装者提供的测试报告，新增测试数据后说明其位置。
+5. 验证停止与再次启动后仍能读取原数据。若进行真实模型调用，说明使用的模型和测试任务，并遵循安装者授权的范围。
+6. 根据当前机器能实际完成的检查报告结果。macOS 逻辑审查和 macOS 实机运行分别记录。
+
+最后给出源码位置、部署位置、Node 与两个研究工具版本、启动入口、网页地址、配置种子来源和验证结果。出现错误时定位具体失败步骤，保护已有数据，再给出恢复或继续安装的方案。

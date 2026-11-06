@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "settings": {
+    "taskTemplateId": "",
+    "taskTemplateName": "",
+    "taskInstructions": "",
+    "reportType": "development",
+    "depth": "standard",
+    "lengthPreset": "detailed",
+    "focusAreas": [
+      "mechanism",
+      "comparison"
+    ],
+    "readerRole": "engineer",
+    "familiarity": "beginner",
+    "sourcePreference": "mixed",
+    "reuseStrategy": "auto",
+    "model": "gpt-6-luna",
+    "reasoningEffort": "default",
+    "styles": [
+      "technical",
+      "comparison"
+    ],
+    "audience": "具备编程基础、希望理解原理与实际取舍的读者",
+    "length": "4000～6000 字",
+    "workingDirectory": "",
+    "outputDirectory": "",
+    "budgetMinutes": 60,
+    "permission": "limited",
+    "format": "markdown"
+  },
+  "templates": [],
+  "hiddenTaskTemplateIds": []
+}
